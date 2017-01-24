@@ -103,6 +103,15 @@
       - ssl-cert
       - devscripts #needed by unarchive module (gtar)
 
+  - name: drop the old wordpress db
+    mysql_db:
+      name: "{{db_name}}"
+      state: absent
+      login_host: "{{mysql_ip}}"
+      login_user: "{{mysql_root_user}}"
+      login_password: "{{ mysql_root_pwd }}"
+    ignore_errors: yes
+
 
   - name: create the wordpress db
     mysql_db:
