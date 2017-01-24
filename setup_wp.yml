@@ -10,11 +10,6 @@
   vars:
     db_name: "wordpress"
 
-  vars_prompt:
-  - name: "wordpress_version"
-    prompt: "which version of wordpress do you prefer? "
-    private: no
-    default: "latest"
 
   tasks:
   - name: Install Python and aptitude (so ansible can run)
