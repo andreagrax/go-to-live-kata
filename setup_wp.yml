@@ -156,7 +156,7 @@
 
   - name: copy the wp-config.php template
     template:
-      src: wp-config.php.j2
+      src: templates/wp-config.php.j2
       dest: /var/www/html/wordpress/wp-config.php
       owner: www-data
       group: www-data
