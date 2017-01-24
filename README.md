@@ -26,3 +26,31 @@ You will need to:
 5. We are evaluating solutions based on the architecture and quality of the deployment. Show us just how beautiful, clean and pragmatic your code can be.
 
 6. Once your solution is ready, please send us the link of your project.
+
+
+**Before you run this playbook**
+* rename the credentials.yml.example to credentials.yml , and populate it using your credentials
+* as python boto need to be updated locally on the control machine , this playbook must be run using the `--ask-sudo-pass` option
+
+
+
+This playbook perform the following steps :
+* deploy the frontend instance
+* deploy the db instance
+* create access group to permit access from the frontend to the DB
+* create one access group to allow remote administration for the frontend instance
+* deploy frontend instance (and update it)
+* harden the frontend instance (automatic updates , custom sshd config , fail2ban)
+* deploy WordPress on the frontend instance
+
+ *tested with ansible 2.3.0 (devel 32b7f85f6c) and ubuntu 14.04 as ansible node*
+
+
+**Assumptions :**
+Here the assumptions which were used in this playbook :
+* fixed AZ
+* default vpc
+* single zone RDS
+
+**Future improvements**
+* self signed certificate => let's encrypt certificate

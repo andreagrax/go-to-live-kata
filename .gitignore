@@ -3,3 +3,9 @@ helloworld.sqlite
 
 .idea
 .DS_Store
+Notes.MD
+credentials.yml
+*.txt
+scratch.yml
+*.retry
+tmp

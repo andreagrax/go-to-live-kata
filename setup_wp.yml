@@ -1,12 +1,12 @@
 ---
-- name: deploy wordpress on the web instance
+- name: prepare for Ansible
   hosts: public_host
   gather_facts: no
   remote_user: ubuntu
   become: true
   vars_files:
     - credentials.yml
-    # - test_vars.yml
+    - test_vars.yml
   vars:
     db_name: "wordpress"
 
@@ -16,7 +16,7 @@
     private: no
     default: "latest"
 
-
+  tasks:
   - name: Install Python and aptitude (so ansible can run)
     raw: apt update && apt install python aptitude -y
     args:
@@ -129,13 +129,15 @@
       enabled: yes
 
   - name: restart machine
-    command: shutdown -r now
-
+    shell: "sleep 5 && shutdown -r now"
+    ignore_errors: yes
+    async: 1
+    poll: 0
+    sudo: true
 
   - name: wait for instance reboot
     pause:
       seconds: 120
-    ignore_errors: yes
 
   - name: Wait until the instance is up (apache responding)
     wait_for:

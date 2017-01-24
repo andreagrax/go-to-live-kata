@@ -120,7 +120,7 @@ action = %(action_)s
 [ssh]
 
 enabled  = true
-port     = 22,444 #added port 444
+port     = 22
 filter   = sshd
 logpath  = /var/log/auth.log
 maxretry = 6
