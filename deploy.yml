@@ -184,7 +184,7 @@
 
   - name: give him time to remove the old mysql instance. if you don't have already run this playbook, you can interrupt and continue
     pause:
-      seconds: 60
+      seconds: 600
 
   - name: create mysql instance
     rds:
