@@ -90,7 +90,6 @@
      key_name: deploy-wp-key
      aws_access_key: "{{ aws_access_key }}"
      aws_secret_key: "{{ aws_secret_key }}"
-    #  group: ssh
      group: ['ssh', 'http']
      instance_type: "{{ instance_type }}"
      image: "{{ ami_id }}"
@@ -111,7 +110,7 @@
     register: eip_info
 
   - name: save eip info
-    local_action: copy content=""{{ eip_info }}""   dest=./eip_info.txt
+    local_action: copy content=""{{ eip_info }}""   dest=/tmp/eip_info.txt
 
 
   - name: save instance ip
@@ -128,7 +127,7 @@
       region: "{{ aws_region }}"
       filters:
         instance-state-name:  running
-    register: ec2_info
+    register: ec2_info_2
 
   - name: print all instance info
     debug:
@@ -136,7 +135,7 @@
       verbosity: 1
 
   - name: save instance info
-    local_action: copy content=""{{ ec2_info }}""   dest=./ec2_info.txt
+    local_action: copy content=""{{ ec2_info_2 }}""   dest=/tmp/ec2_info_2.txt
 ##############################################
 
   - name: Wait until the instance is up (SSH responding)
@@ -180,7 +179,7 @@
 
   - name: save sec group info
     local_action:
-      copy content="{{ mysql_sec_group }}" dest=./mysql_sec_group.txt
+      copy content="{{ mysql_sec_group }}" dest=/tmp/mysql_sec_group.txt
 
   - name: delete old mysql instance
     rds:
@@ -222,7 +221,7 @@
       verbosity: 1
   - name: save mysql instance info
     local_action:
-      copy content="{{ mysql_info }}" dest=./mysql_info.txt
+      copy content="{{ mysql_info }}" dest=/tmp/mysql_info.txt
   - name: set mysql_ip
     set_fact:
       mysql_ip: "{{ mysql_info.instance.endpoint }}"
@@ -237,6 +236,6 @@
       mysql_ip: "{{mysql_ip}}"
       web_ip: "{{ eip_info.public_ip }}"
       web_priv_ip: "{{ec2_info.instances[0].private_ip}}"
-      web_name: "{{ ec2_info.instances[0].dns_name}}"
+      web_name: "{{ ec2_info_2.instances[0].public_dns_name}}"
 
 - include: setup_wp.yml
