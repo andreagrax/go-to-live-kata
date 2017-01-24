@@ -43,7 +43,7 @@
   become: true
   vars_files:
     - credentials.yml
-    - test_vars.yml
+    # - test_vars.yml
   vars:
     db_name: "wordpress"
 
