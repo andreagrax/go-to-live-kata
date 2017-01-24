@@ -88,15 +88,21 @@
 
   - name: cleanup the directory from previous installs
     file:
-      path: /var/www/html/wordpress
+      path: /var/www/html
       state: absent
+
   - name: download wordpress installer
     get_url:
       url: "{{ dl_url }}"
       dest: /tmp/wp_install.tar.gz
       mode: 0440
 
-
+  - name: recreate www directory
+    file:
+      path: /var/www/html
+      state: directory
+      owner: root
+      group: root
 
 
   - name: unarchive
@@ -122,11 +128,31 @@
   - name: enable ssl site
     command: a2ensite default-ssl
 
-  - name: reboot the instance
-    service:
-      name: apache2
-      state: restarted
-      enabled: yes
+#not needed anymore  , reboot ahead!
+  # - name: reboot the instance
+  #   service:
+  #     name: apache2
+  #     state: restarted
+  #     enabled: yes
+
+  - name: fix permission
+    file:
+      path: /var/www/html/wordpress
+      owner: www-data
+      group: www-data
+
+
+
+  - name: move wp files from /var/www/html/wordpress to wwwroot
+    shell: "mv -f /var/www/html/wordpress/* /var/www/html/"
+
+
+
+  - name: cleanup the install directory
+    file:
+      path: /var/www/html/wordpress
+      state: absent
+
 
   - name: restart machine
     shell: "sleep 5 && shutdown -r now"
@@ -137,7 +163,7 @@
 
   - name: wait for instance reboot
     pause:
-      seconds: 120
+      seconds: 60
 
   - name: Wait until the instance is up (apache responding)
     wait_for:
@@ -147,4 +173,4 @@
 
   - name: Success!
     pause:
-      prompt: "Server setup is complete, please point your browser to https://{{web_name}}/wordpress/wp-admin/install.php"
+      prompt: "Server setup is complete, please point your browser to https://{{web_name}}/wp-admin/install.php to complete the installation"
