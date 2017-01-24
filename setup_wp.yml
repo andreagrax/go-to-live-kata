@@ -1,0 +1,148 @@
+---
+- name: deploy wordpress on the web instance
+  hosts: public_host
+  gather_facts: no
+  remote_user: ubuntu
+  become: true
+  vars_files:
+    - credentials.yml
+    # - test_vars.yml
+  vars:
+    db_name: "wordpress"
+
+  vars_prompt:
+  - name: "wordpress_version"
+    prompt: "which version of wordpress do you prefer? "
+    private: no
+    default: "latest"
+
+
+  - name: Install Python and aptitude (so ansible can run)
+    raw: apt update && apt install python aptitude -y
+    args:
+      executable: /bin/bash
+
+  - name: upgrade the server
+    apt:
+      upgrade: full
+
+  - name: set download url (default)
+    set_fact:
+      dl_url: "https://wordpress.org/latest.tar.gz"
+      when: ( wordpress_version == latest)
+  - name: set download url (versioned)
+    set_fact:
+      dl_url: "https://wordpress.org/wordpress-{{ wordpress_version }}.tar.gz"
+      when: ( wordpress_version != latest)
+  - debug:
+      msg: "will download form {{ dl_url }}"
+      verbosity: 1
+
+  - name: Install required software
+    apt: name="{{ item }}" state=present
+    with_items:
+      - apache2
+      - apache2-utils
+      - fontconfig-config
+      - fonts-dejavu-core
+      - libapache2-mod-php7.0
+      - php7.0
+      - php7.0-cgi
+      - php7.0-cli
+      - php7.0-common
+      - php7.0-curl
+      - php7.0-gd
+      - php7.0-json
+      - php7.0-mysql
+      - php7.0-opcache
+      - php7.0-readline
+      - php-common
+      - php-gd
+      - php-getid3
+      - php-mysql
+      - php-pear
+      - python-mysqldb #needed by mysqldb module
+      - ssl-cert
+      - devscripts #needed by unarchive module (gtar)
+
+
+  - name: create the wordpress db
+    mysql_db:
+      name: "{{db_name}}"
+      state: present
+      login_host: "{{mysql_ip}}"
+      login_user: "{{mysql_root_user}}"
+      login_password: "{{ mysql_root_pwd }}"
+
+  - name: create the wordpress user
+    mysql_user:
+      name: "{{ mysql_wp_user }}"
+      password: "{{ mysql_wp_password }}"
+      encrypted: no
+      login_host: "{{mysql_ip}}"
+      login_user: "{{mysql_root_user}}"
+      login_password: "{{ mysql_root_pwd }}"
+      priv: '{{db_name}}.*:ALL'
+      host: "{{web_priv_ip}}"
+      state: present
+
+  - name: cleanup the directory from previous installs
+    file:
+      path: /var/www/html/wordpress
+      state: absent
+  - name: download wordpress installer
+    get_url:
+      url: "{{ dl_url }}"
+      dest: /tmp/wp_install.tar.gz
+      mode: 0440
+
+
+
+
+  - name: unarchive
+    unarchive:
+      src: /tmp/wp_install.tar.gz
+      dest: /var/www/html
+      remote_src: True
+
+
+  - name: copy the wp-config.php template
+    template:
+      src: wp-config.php.j2
+      dest: /var/www/html/wordpress/wp-config.php
+      owner: www-data
+      group: www-data
+
+
+  - name: enable mod_ssl
+    apache2_module:
+      name: ssl
+      state: present
+
+  - name: enable ssl site
+    command: a2ensite default-ssl
+
+  - name: reboot the instance
+    service:
+      name: apache2
+      state: restarted
+      enabled: yes
+
+  - name: restart machine
+    command: shutdown -r now
+
+
+  - name: wait for instance reboot
+    pause:
+      seconds: 120
+    ignore_errors: yes
+
+  - name: Wait until the instance is up (apache responding)
+    wait_for:
+      host: "{{ web_ip }}"
+      port: 80
+      timeout: 300
+
+  - name: Success!
+    pause:
+      prompt: "Server setup is complete, please point your browser to https://{{web_name}}/wordpress/wp-admin/install.php"

@@ -1,0 +1,228 @@
+---
+- name: deploy AWS instances
+  hosts: localhost
+  connection: local
+  gather_facts: no
+
+  vars:
+    aws_region : eu-west-1
+    instance_type : t2.micro
+    ami_id : ami-6f587e1c
+
+  vars_files:
+    - credentials.yml
+
+  # credentials will be asked on production
+  #vars_prompt:
+  # - name: "aws_access_key"
+  #   prompt: "insert your aws access key"
+  #   private: no
+  #
+  # - name: "aws_secret_key"
+  #   prompt: "insert your aws secret access key?"
+  #   private: no
+
+  tasks:
+
+  - name: Update boto to a recent version (on ubuntu 14.04 is < 2.6 , which is needed for rds)
+    command:  pip install --upgrade  boto
+    become: true
+    become_user: root
+    become_method: sudo
+
+  - name: Get the your SSH key
+    command: cat ~/.ssh/id_rsa.pub
+    register: ssh_key
+
+  - name: Add the SSH key , name it deploy-wp-key
+    ec2_key:
+      name: deploy-wp-key
+      key_material: "{{ ssh_key.stdout }}"
+      aws_access_key: "{{ aws_access_key }}"
+      aws_secret_key: "{{ aws_secret_key }}"
+      region: "{{ aws_region }}"
+      wait: yes
+
+  - name: create security group for SSH
+    ec2_group:
+      name: ssh
+      description: allow ssh from any
+      region: "{{ aws_region }}"
+      aws_access_key: "{{ aws_access_key }}"
+      aws_secret_key: "{{ aws_secret_key }}"
+      rules:
+        - proto: tcp
+          from_port: 22
+          to_port: 22
+          cidr_ip: 0.0.0.0/0
+      rules_egress:
+        - proto: all
+          from_port: 1
+          to_port: 65535
+          cidr_ip: 0.0.0.0/0
+
+
+  - name: create security group for http(s)
+    ec2_group:
+      name: http
+      description: allow http(s) from any
+      region: "{{ aws_region }}"
+      aws_access_key: "{{ aws_access_key }}"
+      aws_secret_key: "{{ aws_secret_key }}"
+      rules:
+        - proto: tcp
+          from_port: 80
+          to_port: 80
+          cidr_ip: 0.0.0.0/0
+        - proto: tcp
+          from_port: 443
+          to_port: 443
+          cidr_ip: 0.0.0.0/0
+      rules_egress:
+        - proto: all
+          from_port: 1
+          to_port: 65535
+          cidr_ip: 0.0.0.0/0
+
+
+  - name : Create the Instance
+    ec2:
+     key_name: deploy-wp-key
+     aws_access_key: "{{ aws_access_key }}"
+     aws_secret_key: "{{ aws_secret_key }}"
+    #  group: ssh
+     group: ['ssh', 'http']
+     instance_type: "{{ instance_type }}"
+     image: "{{ ami_id }}"
+     region: "{{ aws_region }}"
+     wait: yes
+     wait_timeout: 500
+     assign_public_ip: no
+    register: ec2_info
+
+  - name: print all instance info
+    debug:
+      var: ec2_info
+      verbosity: 1
+
+  - name: save instance info
+    local_action: copy content=""{{ ec2_info }}""   dest=./ec2_info.txt
+
+  - name: Allocate and associate Elastic IP
+    ec2_eip:
+      aws_access_key: "{{ aws_access_key }}"
+      aws_secret_key: "{{ aws_secret_key }}"
+      region: "{{ aws_region }}"
+      device_id: "{{ ec2_info.instances[0].id }}"
+      in_vpc: "{{ aws_vpc_id is defined and aws_vpc_id != '' }}"
+    register: eip_info
+
+  - name: save eip info
+    local_action: copy content=""{{ eip_info }}""   dest=./eip_info.txt
+
+
+  - name: save instance ip
+    set_fact:
+      web_ip: "{{ eip_info.public_ip }}"
+      web_priv_ip: "{{ec2_info.instances[0].private_ip}}"
+      # web_name: "{{eip_info.public_dns_name}}"
+
+
+  - name: Wait until the instance is up (SSH responding)
+    wait_for:
+      host: "{{ web_ip }}"
+      port: 22
+      search_regex: OpenSSH
+      timeout: 300
+
+
+  #we need to recreate this SG if it already exists , just to be sure that the correct source network is guessed
+  - name: cleanup security group for mysql
+    ec2_group:
+      name: mysql
+      description: allow mysql from the web instance
+      state: absent
+      region: "{{ aws_region }}"
+      aws_access_key: "{{ aws_access_key }}"
+      aws_secret_key: "{{ aws_secret_key }}"
+    ignore_errors: yes
+
+
+  - name: create security group for mysql
+    ec2_group:
+      name: mysql
+      description: allow mysql from the web instance
+      region: "{{ aws_region }}"
+      aws_access_key: "{{ aws_access_key }}"
+      aws_secret_key: "{{ aws_secret_key }}"
+      rules:
+        - proto: tcp
+          from_port: 3306
+          to_port: 3306
+          cidr_ip: "{{ ec2_info.instances[0].private_ip }}/32"
+    register: mysql_sec_group
+
+  - name: print all sec group info
+    debug:
+      var: mysql_sec_group
+      verbosity: 1
+
+  - name: save sec group info
+    local_action:
+      copy content="{{ mysql_sec_group }}" dest=./mysql_sec_group.txt
+
+  - name: delete old mysql instance
+    rds:
+      command: delete
+      region: "{{ aws_region }}"
+      aws_access_key: "{{ aws_access_key }}"
+      aws_secret_key: "{{ aws_secret_key }}"
+      instance_name: mysql1
+      wait: yes
+      wait_timeout: 600
+    ignore_errors: yes
+
+
+  - name: create mysql instance
+    rds:
+      command: create
+      region: "{{ aws_region }}"
+      aws_access_key: "{{ aws_access_key }}"
+      aws_secret_key: "{{ aws_secret_key }}"
+      instance_name: mysql1
+      db_engine: MySQL
+      size: 10
+      instance_type: db.t2.micro
+      username: "{{ mysql_root_user }}"
+      password: "{{ mysql_root_pwd }}"
+      vpc_security_groups: "{{mysql_sec_group.group_id}}"
+      publicly_accessible: no
+      backup_retention: 7 #it's a production db , keep it for 7 days
+      wait: yes
+      wait_timeout: 1200
+    register: mysql_info
+
+  - name: print all mysql instance info
+    debug:
+      var: mysql_info
+      verbosity: 1
+  - name: save mysql instance info
+    local_action:
+      copy content="{{ mysql_info }}" dest=./mysql_info.txt
+  - name: set mysql_ip
+    set_fact:
+      mysql_ip: "{{ mysql_info.instance.endpoint }}"
+
+
+  - name: add public instance ip to the inventory #with inherithed vars
+    add_host:
+      name: "{{ web_ip }}"
+      groups: public_host
+      ansible_user: ubuntu
+      ansible_become: yes
+      mysql_ip: "{{mysql_ip}}"
+      web_ip: "{{ eip_info.public_ip }}"
+      web_priv_ip: "{{ec2_info.instances[0].private_ip}}"
+      web_name: "{{ec2_info.instances[0].dns_name}}"
+
+- include: setup_wp.yml

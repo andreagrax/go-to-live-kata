@@ -1,0 +1,8 @@
+- name: FAIL2BAN | install pkg 
+  apt: name=fail2ban state=latest
+- name: FAIL2BAN | install jail.conf
+  copy: src=jail.local dest=/etc/fail2ban/jail.conf owner=root mode=0600 backup=yes
+  notify:
+  - restart_fail2ban
+- name: FAIL2BAN | enable service
+  service: name=fail2ban enabled=yes state=started
