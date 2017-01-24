@@ -182,6 +182,9 @@
       wait_timeout: 600
     ignore_errors: yes
 
+  - name: give him time to remove the old mysql instance. if you don't have already run this playbook, you can interrupt and continue
+    pause:
+      seconds: 60
 
   - name: create mysql instance
     rds:

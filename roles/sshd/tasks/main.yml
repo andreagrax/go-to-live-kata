@@ -1,4 +1,5 @@
-- name: SSH | copy my config
+
+- name: "SSH | copy my config |WARNING : host key will change"
   copy: src=sshd_config dest=/etc/ssh/sshd_config owner=root group=root mode=0644 backup=yes
 
   notify:

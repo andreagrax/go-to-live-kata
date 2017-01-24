@@ -22,6 +22,47 @@
     args:
       executable: /bin/bash
 
+
+
+
+
+#======================================================================================================================
+- name: a little bit of hardening never hurted anyone
+  hosts: public_host
+  gather_facts: no
+  remote_user: ubuntu
+  become: true
+  vars_files:
+    - credentials.yml
+    - test_vars.yml
+
+  roles:
+  - sshd
+  - fail2ban
+
+- name: prepare for Ansible
+  hosts: public_host
+  gather_facts: no
+  remote_user: ubuntu
+  become: true
+  vars_files:
+    - credentials.yml
+    - test_vars.yml
+  vars:
+    db_name: "wordpress"
+
+  vars_prompt:
+  - name: "wordpress_version"
+    prompt: "which version of wordpress do you prefer? "
+    private: no
+    default: "latest"
+
+  tasks:
+
+
+
+
+#======================================================================================================================
   - name: upgrade the server
     apt:
       upgrade: full
@@ -159,7 +200,7 @@
     ignore_errors: yes
     async: 1
     poll: 0
-    sudo: true
+    become: true
 
   - name: wait for instance reboot
     pause:
