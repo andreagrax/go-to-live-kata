@@ -47,11 +47,12 @@
   vars:
     db_name: "wordpress"
 
-  vars_prompt:
-  - name: "wordpress_version"
-    prompt: "which version of wordpress do you prefer? "
-    private: no
-    default: "latest"
+  # moved to deploy.yml
+  # vars_prompt:
+  # - name: "wordpress_version"
+  #   prompt: "which version of wordpress do you prefer? "
+  #   private: no
+  #   default: "latest"
 
   tasks:
 

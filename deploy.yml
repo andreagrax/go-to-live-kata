@@ -8,19 +8,16 @@
     aws_region : eu-west-1
     instance_type : t2.micro
     ami_id : ami-6f587e1c
+    rds_name: wpdb
 
   vars_files:
     - credentials.yml
 
-  # credentials will be asked on production
-  #vars_prompt:
-  # - name: "aws_access_key"
-  #   prompt: "insert your aws access key"
-  #   private: no
-  #
-  # - name: "aws_secret_key"
-  #   prompt: "insert your aws secret access key?"
-  #   private: no
+  vars_prompt:
+  - name: "wordpress_version"
+    prompt: "which version of wordpress do you prefer? "
+    private: no
+    default: "latest"
 
   tasks:
 
@@ -187,7 +184,7 @@
       region: "{{ aws_region }}"
       aws_access_key: "{{ aws_access_key }}"
       aws_secret_key: "{{ aws_secret_key }}"
-      instance_name: mysql1
+      instance_name: "{{rds_name}}"
       wait: yes
       wait_timeout: 600
     ignore_errors: yes
@@ -202,7 +199,7 @@
       region: "{{ aws_region }}"
       aws_access_key: "{{ aws_access_key }}"
       aws_secret_key: "{{ aws_secret_key }}"
-      instance_name: mysql1
+      instance_name: "{{rds_name}}"
       db_engine: MySQL
       size: 10
       instance_type: db.t2.micro
@@ -227,7 +224,7 @@
       mysql_ip: "{{ mysql_info.instance.endpoint }}"
 
 
-  - name: add public instance ip to the inventory #with inherithed vars
+  - name: add instance info ip to the inventory #with inherithed vars
     add_host:
       name: "{{ web_ip }}"
       groups: public_host
@@ -237,5 +234,6 @@
       web_ip: "{{ eip_info.public_ip }}"
       web_priv_ip: "{{ec2_info.instances[0].private_ip}}"
       web_name: "{{ ec2_info_2.instances[0].public_dns_name}}"
+      wordpress_version: "{{wordpress_version}}"
 
 - include: setup_wp.yml
