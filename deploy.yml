@@ -106,8 +106,8 @@
       in_vpc: "{{ aws_vpc_id is defined and aws_vpc_id != '' }}"
     register: eip_info
 
-  - name: save eip info
-    local_action: copy content=""{{ eip_info }}""   dest=/tmp/eip_info.txt
+  # - name: save eip info
+  #   local_action: copy content=""{{ eip_info }}""   dest=/tmp/eip_info.txt
 
 
   - name: save instance ip
@@ -131,9 +131,9 @@
       var: ec2_info
       verbosity: 1
 
-  - name: save instance info
-    local_action: copy content=""{{ ec2_info_2 }}""   dest=/tmp/ec2_info_2.txt
-##############################################
+  # - name: save instance info
+  #   local_action: copy content=""{{ ec2_info_2 }}""   dest=/tmp/ec2_info_2.txt
+
 
   - name: Wait until the instance is up (SSH responding)
     wait_for:
@@ -174,9 +174,9 @@
       var: mysql_sec_group
       verbosity: 1
 
-  - name: save sec group info
-    local_action:
-      copy content="{{ mysql_sec_group }}" dest=/tmp/mysql_sec_group.txt
+  # - name: save sec group info
+  #   local_action:
+  #     copy content="{{ mysql_sec_group }}" dest=/tmp/mysql_sec_group.txt
 
   - name: delete old mysql instance
     rds:
@@ -216,9 +216,9 @@
     debug:
       var: mysql_info
       verbosity: 1
-  - name: save mysql instance info
-    local_action:
-      copy content="{{ mysql_info }}" dest=/tmp/mysql_info.txt
+  # - name: save mysql instance info
+  #   local_action:
+  #     copy content="{{ mysql_info }}" dest=/tmp/mysql_info.txt
   - name: set mysql_ip
     set_fact:
       mysql_ip: "{{ mysql_info.instance.endpoint }}"
